@@ -111,6 +111,8 @@ def main(dataset_dir: str, save_path: str) -> None:
     coco.add_category(CocoCategory(id=0, name='car'))
     for video in dataset_generator:
         for i, annotation in video.annotations.items():
+            if i not in video.frames:
+                continue
             frame = video.frames[i]
             coco_image = CocoImage(file_name=frame.file_path, height=frame.height, width=frame.width)
             coco_image.add_annotation(

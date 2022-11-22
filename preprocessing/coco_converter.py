@@ -8,6 +8,9 @@ from sahi.utils.coco import Coco, CocoCategory, CocoImage, CocoAnnotation
 from sahi.utils.file import save_json
 
 
+VIDEO_EXTENSIONS = ('.mov', '.mp4')
+
+
 @dataclass
 class Base:
     def __call__(self, *args, **kwargs) -> Dict[str, Any]:
@@ -36,16 +39,16 @@ class Video(Base):
     annotations: Union[Dict[int, Annotation], None] = None
 
 
-def get_frames(video_path: pathlib.Path, frame_extension='jpg') -> Union[Dict[int, Frame]]:
+def get_frames(
+    video_path: pathlib.Path, frames_save_dir: pathlib.Path, frame_extension='jpg'
+) -> Union[Dict[int, Frame]]:
     video_capture = cv2.VideoCapture(str(video_path))
     success, image = video_capture.read()
-    dest_dir: pathlib.Path = pathlib.Path(video_path.parents[0] / video_path.stem)
-    dest_dir.mkdir(parents=True, exist_ok=True)
     frame: int = 0
     frames: Union[Dict[int, Frame]] = {}
     while success:
         frame += 1
-        dest_path: str = str(dest_dir / f'{frame}.{frame_extension}')
+        dest_path: str = str(frames_save_dir / f'{video_path.stem}_{frame}.{frame_extension}')
         cv2.imwrite(dest_path, image)
         height, width, _ = cv2.imread(dest_path).shape
         frames[frame] = Frame(
@@ -81,9 +84,9 @@ def get_annotations(annotation_path: pathlib.Path) -> Union[Dict[int, Annotation
     return annotations
 
 
-def get_video(video_path: pathlib.Path, annotation_path: pathlib.Path) -> Video:
+def get_video(video_path: pathlib.Path, annotation_path: pathlib.Path, frames_save_dir: pathlib.Path) -> Video:
     print('Working on frames..', end=' ')
-    frames = get_frames(video_path)
+    frames = get_frames(video_path, frames_save_dir)
     print(' | Done!')
     print('Working on annotations..', end=' ')
     annotations = get_annotations(annotation_path)
@@ -97,16 +100,18 @@ def get_video(video_path: pathlib.Path, annotation_path: pathlib.Path) -> Video:
     return video
 
 
-def load_dataset(dataset_dir: str) -> Generator[Video, None, None]:
+def load_dataset(dataset_dir: str, frames_save_dir: pathlib.Path) -> Generator[Video, None, None]:
     for annotation, video in zip(
         sorted(pathlib.Path(dataset_dir).glob('*.txt')),
-        sorted(pathlib.Path(dataset_dir).glob('*.MOV'))
+        sorted([path for path in pathlib.Path(dataset_dir).glob('*') if path.suffix.lower() in VIDEO_EXTENSIONS])
     ):
-        yield get_video(video, annotation)
+        yield get_video(video, annotation, frames_save_dir)
 
 
-def main(dataset_dir: str, save_path: str) -> None:
-    dataset_generator = load_dataset(dataset_dir)
+def main(dataset_dir: str, save_path: str, frames_save_dir: str) -> None:
+    frames_save_dir = pathlib.Path(frames_save_dir)
+    frames_save_dir.mkdir(parents=True, exist_ok=True)
+    dataset_generator = load_dataset(dataset_dir, frames_save_dir)
     coco = Coco()
     coco.add_category(CocoCategory(id=0, name='car'))
     for video in dataset_generator:
@@ -138,5 +143,7 @@ if __name__ == '__main__':
         default='coco_json.json',
         help='Destination directory for coco json'
     )
+    parser.add_argument('--frames_save_dir', help='Destination directory for video frames')
     _args = parser.parse_args()
-    main(_args.dataset_dir, _args.coco_json_dest)
+    main(_args.dataset_dir, _args.coco_json_dest, _args.frames_save_dir)
+

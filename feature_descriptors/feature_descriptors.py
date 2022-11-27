@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from scipy.signal import convolve2d
+import pywt
 
 from typing import Tuple
 
@@ -44,7 +45,8 @@ class HogFeatureDescriptor(BaseFeatureDescriptor):
         
         img = self._preprocess_image(
             raw_img=image,
-            target_size=target_size
+            target_size=target_size,
+            target_colormap = cv2.COLOR_BGR2GRAY
         )
         
         mag, ang = self._compute_sobel(img)
@@ -197,4 +199,14 @@ class FASTFeatureDescriptor(BaseFeatureDescriptor):
                 fewer_kps.append(new_kp)
 
         return fewer_kps
+    
+class CWTFeatureDrscriptor(BaseFeatureDescriptor):
+    def __init__(self, cwt_type='bior1.3'):
+        self.cwt_type = cwt_type
+    
+
+    def predict(self, img:np.ndarray):
+        img =self._preprocess_image(img, target_size=(64,64), target_colormap=cv2.COLOR_BGR2GRAY)
+        LL, _ =  pywt.dwt2(img, self.cwt_type)
+        return LL
 

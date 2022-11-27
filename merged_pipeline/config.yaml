@@ -1,0 +1,18 @@
+defaults:
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+models:
+  yolov5:
+    weights_path: /home/rizvan/f22/intro-to-cv/project/cars-tracking/yolov5/runs/train/yolov5m/weights/best.pt
+  svm:
+    weights_path: /home/rizvan/f22/intro-to-cv/project/cars-tracking/feature_descriptors/svm.dat
+    class_map_path: /home/rizvan/f22/intro-to-cv/project/cars-tracking/feature_descriptors/class_map.json
+device: cuda:0
+test_video_path: /home/rizvan/f22/intro-to-cv/project/cars-tracking/data/vriv/source/ford_escape_2011_blue_03.mp4
+save_dir: results
